@@ -23,9 +23,10 @@ namespace BiAi
                 })
                 .ConfigureServices((hostContext, services) =>
                 {
-                    services.AddHttpClient();
-                    services.AddSingleton<IDeepStackService, DeepStackService>();
-                    services.AddHostedService<Worker>();
+                    services.AddHttpClient()
+                        .AddSingleton<IDeepStackService, DeepStackService>()
+                        .AddSingleton<IImageProcessor, ImageProcessor>()
+                        .AddHostedService<Worker>();
                 });
     }
 }

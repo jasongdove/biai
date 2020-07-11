@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using BiAi.Models;
@@ -18,14 +17,14 @@ namespace BiAi
         private static readonly SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(1,1);
         
         private readonly ILogger<Worker> _logger;
-        private readonly IDeepStackService _deepStackService;
+        private readonly IImageProcessor _imageProcessor;
         private readonly FileSystemWatcher _watcher;
         private readonly List<CameraConfig> _cameras;
 
-        public Worker(ILogger<Worker> logger, IConfiguration configuration, IDeepStackService deepStackService)
+        public Worker(ILogger<Worker> logger, IConfiguration configuration, IImageProcessor imageProcessor)
         {
             _logger = logger;
-            _deepStackService = deepStackService;
+            _imageProcessor = imageProcessor;
 
             _watcher = new FileSystemWatcher
             {
@@ -77,42 +76,12 @@ namespace BiAi
             try
             {
                 await GetCameraForFile(e.FullPath)
-                    .Some(async c => await ProcessImageAsync(c, e.FullPath))
+                    .Some(async c => await _imageProcessor.ProcessImageAsync(c, e.FullPath))
                     .None(async () => _logger.LogWarning($"Could not match camera for file {e.FullPath}"));
             }
             finally
             {
                 _semaphoreSlim.Release();
-            }
-        }
-
-        private async Task ProcessImageAsync(CameraConfig camera, string fullPath)
-        {
-            _logger.LogDebug(
-                "File [{file}] was created and matched to camera [{camera}]",
-                fullPath,
-                camera.Name);
-                        
-            var response = await _deepStackService.DetectAsync(fullPath);
-            await response
-                .Some(async r => await ProcessDeepStackResponseAsync(camera, r))
-                .None(async () => _logger.LogWarning("No response from DeepStackService?"));
-        }
-
-        private async Task ProcessDeepStackResponseAsync(CameraConfig camera, DeepStackResponse response)
-        {
-            if (response.Success)
-            {
-                _logger.LogInformation("DeepStack success.");
-                var relevantObjects = GetRelevantObjects(camera, response);
-                if (relevantObjects.Any())
-                {
-                    _logger.LogInformation("ALERT!");
-                }
-            }
-            else
-            {
-                _logger.LogWarning("DeepStack did not detect any objects");
             }
         }
 
@@ -122,14 +91,6 @@ namespace BiAi
                 .Split('.')
                 .HeadOrNone()
                 .Bind(p => _cameras.Filter(c => c.Enabled && c.Name == p).HeadOrNone());
-        }
-
-        private static IEnumerable<DeepStackObject> GetRelevantObjects(CameraConfig camera, DeepStackResponse response)
-        {
-            return response.Predictions
-                .Filter(p => camera.RelevantObjects.Contains(p.Label)
-                             && p.Confidence * 100 >= camera.LowerCertainty
-                             && p.Confidence * 100 <= camera.UpperCertainty);
         }
     }
 }
