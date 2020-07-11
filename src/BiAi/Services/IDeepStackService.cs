@@ -1,10 +1,11 @@
 using System.Threading.Tasks;
 using BiAi.Models;
+using LanguageExt;
 
 namespace BiAi.Services
 {
     public interface IDeepStackService
     {
-        Task<DeepStackResponse> DetectAsync(string fullPath);
+        Task<Option<DeepStackResponse>> DetectAsync(string fullPath);
     }
 }

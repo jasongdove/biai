@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using BiAi.Models;
@@ -8,7 +10,6 @@ using LanguageExt;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 
 namespace BiAi
 {
@@ -69,27 +70,14 @@ namespace BiAi
         private async void OnCreatedAsync(object sender, FileSystemEventArgs e)
         {
             await _semaphoreSlim.WaitAsync();
+            
+            // this helps with files that are still being written
+            await Task.Delay(TimeSpan.FromMilliseconds(100));
+            
             try
             {
-                var camera = GetCameraForFile(e.FullPath);
-                await camera
-                    .Some(async c =>
-                    {
-                        _logger.LogDebug(
-                            "File [{file}] was created and matched to camera [{camera}]",
-                            e.FullPath,
-                            c.Name);
-                        
-                        var response = await _deepStackService.DetectAsync(e.FullPath);
-                        if (response?.Success == true)
-                        {
-                            _logger.LogInformation($"DeepStack success: {JsonConvert.SerializeObject(response)}");
-                        }
-                        else
-                        {
-                            _logger.LogWarning("DeepStack failure");
-                        }
-                    })
+                await GetCameraForFile(e.FullPath)
+                    .Some(async c => await ProcessImageAsync(c, e.FullPath))
                     .None(async () => _logger.LogWarning($"Could not match camera for file {e.FullPath}"));
             }
             finally
@@ -98,12 +86,50 @@ namespace BiAi
             }
         }
 
+        private async Task ProcessImageAsync(CameraConfig camera, string fullPath)
+        {
+            _logger.LogDebug(
+                "File [{file}] was created and matched to camera [{camera}]",
+                fullPath,
+                camera.Name);
+                        
+            var response = await _deepStackService.DetectAsync(fullPath);
+            await response
+                .Some(async r => await ProcessDeepStackResponseAsync(camera, r))
+                .None(async () => _logger.LogWarning("No response from DeepStackService?"));
+        }
+
+        private async Task ProcessDeepStackResponseAsync(CameraConfig camera, DeepStackResponse response)
+        {
+            if (response.Success)
+            {
+                _logger.LogInformation("DeepStack success.");
+                var relevantObjects = GetRelevantObjects(camera, response);
+                if (relevantObjects.Any())
+                {
+                    _logger.LogInformation("ALERT!");
+                }
+            }
+            else
+            {
+                _logger.LogWarning("DeepStack did not detect any objects");
+            }
+        }
+
         private Option<CameraConfig> GetCameraForFile(string fullPath)
         {
             return Path.GetFileNameWithoutExtension(fullPath)
                 .Split('.')
                 .HeadOrNone()
-                .Bind(p => _cameras.Filter(c => c.Name == p).HeadOrNone());
+                .Bind(p => _cameras.Filter(c => c.Enabled && c.Name == p).HeadOrNone());
+        }
+
+        private static IEnumerable<DeepStackObject> GetRelevantObjects(CameraConfig camera, DeepStackResponse response)
+        {
+            return response.Predictions
+                .Filter(p => camera.RelevantObjects.Contains(p.Label)
+                             && p.Confidence * 100 >= camera.LowerCertainty
+                             && p.Confidence * 100 <= camera.UpperCertainty);
         }
     }
 }
