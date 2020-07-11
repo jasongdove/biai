@@ -1,7 +1,10 @@
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using BiAi.Models;
 using BiAi.Services;
+using LanguageExt;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -16,6 +19,7 @@ namespace BiAi
         private readonly ILogger<Worker> _logger;
         private readonly IDeepStackService _deepStackService;
         private readonly FileSystemWatcher _watcher;
+        private readonly List<CameraConfig> _cameras;
 
         public Worker(ILogger<Worker> logger, IConfiguration configuration, IDeepStackService deepStackService)
         {
@@ -29,6 +33,14 @@ namespace BiAi
             };
             
             _watcher.Created += OnCreatedAsync;
+
+            _cameras = configuration.GetSection("Cameras").Get<List<CameraConfig>>();
+            _logger.LogInformation($"Loaded {_cameras.Count} cameras");
+            foreach (var camera in _cameras)
+            {
+                var objects = string.Join(", ", camera.RelevantObjects);
+                _logger.LogDebug($"Camera [{camera.Name}] relevant objects: {objects}");
+            }
         }
         
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -59,21 +71,39 @@ namespace BiAi
             await _semaphoreSlim.WaitAsync();
             try
             {
-                _logger.LogInformation($"File {e.FullPath} was created");
-                var response = await _deepStackService.DetectAsync(e.FullPath);
-                if (response?.Success == true)
-                {
-                    _logger.LogInformation($"DeepStack success: {JsonConvert.SerializeObject(response)}");
-                }
-                else
-                {
-                    _logger.LogWarning("DeepStack failure");
-                }
+                var camera = GetCameraForFile(e.FullPath);
+                await camera
+                    .Some(async c =>
+                    {
+                        _logger.LogDebug(
+                            "File [{file}] was created and matched to camera [{camera}]",
+                            e.FullPath,
+                            c.Name);
+                        
+                        var response = await _deepStackService.DetectAsync(e.FullPath);
+                        if (response?.Success == true)
+                        {
+                            _logger.LogInformation($"DeepStack success: {JsonConvert.SerializeObject(response)}");
+                        }
+                        else
+                        {
+                            _logger.LogWarning("DeepStack failure");
+                        }
+                    })
+                    .None(async () => _logger.LogWarning($"Could not match camera for file {e.FullPath}"));
             }
             finally
             {
                 _semaphoreSlim.Release();
             }
+        }
+
+        private Option<CameraConfig> GetCameraForFile(string fullPath)
+        {
+            return Path.GetFileNameWithoutExtension(fullPath)
+                .Split('.')
+                .HeadOrNone()
+                .Bind(p => _cameras.Filter(c => c.Name == p).HeadOrNone());
         }
     }
 }

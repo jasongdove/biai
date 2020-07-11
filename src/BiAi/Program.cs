@@ -1,6 +1,8 @@
 using BiAi.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Console;
 
 namespace BiAi
 {
@@ -13,6 +15,12 @@ namespace BiAi
 
         private static IHostBuilder CreateHostBuilder(string[] args) =>
             Host.CreateDefaultBuilder(args)
+                .ConfigureLogging(logging =>
+                {
+                    logging.AddConsole(options => {
+                        options.Format=ConsoleLoggerFormat.Systemd;
+                    });
+                })
                 .ConfigureServices((hostContext, services) =>
                 {
                     services.AddHttpClient();
