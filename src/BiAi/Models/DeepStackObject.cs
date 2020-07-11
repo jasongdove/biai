@@ -1,12 +1,25 @@
+using Newtonsoft.Json;
+
 namespace BiAi.Models
 {
     public class DeepStackObject
     {
-        public string label { get; set; }
-        public float confidence { get; set; }
-        public int y_min { get; set; }
-        public int x_min { get; set; }
-        public int y_max { get; set; }
-        public int x_max { get; set; }
+        [JsonProperty("label")]
+        public string Label { get; set; }
+        
+        [JsonProperty("confidence")]
+        public float Confidence { get; set; }
+        
+        [JsonProperty("y_min")]
+        public int YMin { get; set; }
+        
+        [JsonProperty("x_min")]
+        public int XMin { get; set; }
+        
+        [JsonProperty("y_max")]
+        public int YMax { get; set; }
+        
+        [JsonProperty("x_max")]
+        public int XMax { get; set; }
     }
 }

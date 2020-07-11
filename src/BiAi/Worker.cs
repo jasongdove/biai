@@ -14,20 +14,18 @@ namespace BiAi
         private static readonly SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(1,1);
         
         private readonly ILogger<Worker> _logger;
-        private readonly IConfiguration _configuration;
         private readonly IDeepStackService _deepStackService;
         private readonly FileSystemWatcher _watcher;
 
         public Worker(ILogger<Worker> logger, IConfiguration configuration, IDeepStackService deepStackService)
         {
             _logger = logger;
-            _configuration = configuration;
             _deepStackService = deepStackService;
 
             _watcher = new FileSystemWatcher
             {
                 Path = configuration["ImagePath"],
-                Filter = "*.jpg",
+                Filter = configuration["ImageFilter"]
             };
             
             _watcher.Created += OnCreatedAsync;
@@ -40,17 +38,13 @@ namespace BiAi
 
         public override Task StartAsync(CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Service starting");
             _watcher.EnableRaisingEvents = true;
-
             return base.StartAsync(cancellationToken);
         }
 
         public override Task StopAsync(CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Service stopping");
             _watcher.EnableRaisingEvents = false;
-            
             return base.StopAsync(cancellationToken);
         }
 
@@ -67,7 +61,7 @@ namespace BiAi
             {
                 _logger.LogInformation($"File {e.FullPath} was created");
                 var response = await _deepStackService.DetectAsync(e.FullPath);
-                if (response != null && response.success)
+                if (response?.Success == true)
                 {
                     _logger.LogInformation($"DeepStack success: {JsonConvert.SerializeObject(response)}");
                 }
