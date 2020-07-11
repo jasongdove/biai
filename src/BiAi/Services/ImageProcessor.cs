@@ -22,7 +22,7 @@ namespace BiAi.Services
         public async Task ProcessImageAsync(CameraConfig camera, string fullPath)
         {
             _logger.LogDebug(
-                "File [{file}] was created and matched to camera [{camera}]",
+                "Image at {imagePath} was created and matched to camera {camera}",
                 fullPath,
                 camera.Name);
                         

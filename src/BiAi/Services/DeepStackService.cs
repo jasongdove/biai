@@ -43,7 +43,7 @@ namespace BiAi.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Failed to process image {fullPath}");
+                _logger.LogError(ex, "Failed to process image at {imagePath}", fullPath);
             }
 
             return None;

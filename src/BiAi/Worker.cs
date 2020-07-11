@@ -35,11 +35,11 @@ namespace BiAi
             _watcher.Created += OnCreatedAsync;
 
             _cameras = configuration.GetSection("Cameras").Get<List<CameraConfig>>();
-            _logger.LogInformation($"Loaded {_cameras.Count} cameras");
+            _logger.LogInformation("Loaded {count} cameras", _cameras.Count);
             foreach (var camera in _cameras)
             {
                 var objects = string.Join(", ", camera.RelevantObjects);
-                _logger.LogDebug($"Camera [{camera.Name}] relevant objects: {objects}");
+                _logger.LogDebug("Camera {camera} relevant objects: {objects}", camera.Name, objects);
             }
         }
         
@@ -77,7 +77,7 @@ namespace BiAi
             {
                 await GetCameraForFile(e.FullPath)
                     .Some(async c => await _imageProcessor.ProcessImageAsync(c, e.FullPath))
-                    .None(async () => _logger.LogWarning($"Could not match camera for file {e.FullPath}"));
+                    .None(async () => _logger.LogWarning("Could not match camera for image at {imagePath}", e.FullPath));
             }
             finally
             {
