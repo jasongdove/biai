@@ -10,11 +10,13 @@ namespace BiAi.Services
     {
         private readonly ILogger<ImageProcessor> _logger;
         private readonly IDeepStackService _deepStackService;
+        private readonly ITelegramService _telegramService;
 
-        public ImageProcessor(ILogger<ImageProcessor> logger, IDeepStackService deepStackService)
+        public ImageProcessor(ILogger<ImageProcessor> logger, IDeepStackService deepStackService, ITelegramService telegramService)
         {
             _logger = logger;
             _deepStackService = deepStackService;
+            _telegramService = telegramService;
         }
         
         public async Task ProcessImageAsync(CameraConfig camera, string fullPath)
@@ -26,11 +28,11 @@ namespace BiAi.Services
                         
             var response = await _deepStackService.DetectAsync(fullPath);
             await response
-                .Some(async r => await ProcessDeepStackResponseAsync(camera, r))
+                .Some(async r => await ProcessDeepStackResponseAsync(camera, r, fullPath))
                 .None(async () => _logger.LogWarning("No response from DeepStackService?"));
         }
         
-        private async Task ProcessDeepStackResponseAsync(CameraConfig camera, DeepStackResponse response)
+        private async Task ProcessDeepStackResponseAsync(CameraConfig camera, DeepStackResponse response, string fullPath)
         {
             if (response.Success)
             {
@@ -39,6 +41,7 @@ namespace BiAi.Services
                 if (!relevantObjects.IsEmpty)
                 {
                     _logger.LogInformation("ALERT!");
+                    await _telegramService.SendAlarmAsync(fullPath);
                 }
             }
             else

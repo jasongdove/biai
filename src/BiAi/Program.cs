@@ -25,6 +25,7 @@ namespace BiAi
                 {
                     services.AddHttpClient()
                         .AddSingleton<IDeepStackService, DeepStackService>()
+                        .AddSingleton<ITelegramService, TelegramService>()
                         .AddSingleton<IImageProcessor, ImageProcessor>()
                         .AddHostedService<Worker>();
                 });
