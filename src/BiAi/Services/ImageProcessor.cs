@@ -41,7 +41,7 @@ namespace BiAi.Services
                 if (!relevantObjects.IsEmpty)
                 {
                     _logger.LogInformation("ALERT!");
-                    await _telegramService.SendAlarmAsync(fullPath);
+                    await _telegramService.SendAlarmAsync(camera, fullPath);
                 }
             }
             else

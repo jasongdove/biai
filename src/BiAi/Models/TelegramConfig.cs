@@ -5,9 +5,9 @@ namespace BiAi.Models
         private long[] _chatIds;
         public string Token { get; set; }
 
-        // the config binder appears to use null rather than an empty array
         public long[] ChatIds
         {
+            // the config binder appears to use null rather than an empty array
             get => _chatIds ?? new long[0];
             set => _chatIds = value;
         }

@@ -15,7 +15,7 @@ namespace BiAi.Services
             _telegramConfig = configuration.GetSection("Telegram").Get<TelegramConfig>();
         }
         
-        public async Task SendAlarmAsync(string fullPath)
+        public async Task SendAlarmAsync(CameraConfig camera, string fullPath)
         {
             // TODO: make this more functional
             var chatIds = _telegramConfig.ChatIds.ToSeq();
@@ -23,14 +23,14 @@ namespace BiAi.Services
             {
                 var client = new TelegramBotClient(_telegramConfig.Token);
                 await using var stream = File.OpenRead(fullPath);
-                var message = await client.SendPhotoAsync(chatIds.Head, stream);
+                var message = await client.SendPhotoAsync(chatIds.Head, stream, camera.Caption);
                 var photos = message.Photo.ToSeq();
                 if (!photos.IsEmpty)
                 {
                     var fileId = photos.Head.FileId;
                     foreach (var chatId in chatIds.Tail)
                     {
-                        await client.SendPhotoAsync(chatId, fileId);
+                        await client.SendPhotoAsync(chatId, fileId, camera.Caption);
                     }
                 }
             }
