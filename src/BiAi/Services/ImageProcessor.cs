@@ -28,8 +28,8 @@ namespace BiAi.Services
                         
             var response = await _deepStackService.DetectAsync(fullPath);
             await response
-                .Some(async r => await ProcessDeepStackResponseAsync(camera, r, fullPath))
-                .None(async () => _logger.LogWarning("No response from DeepStackService?"));
+                .Right(async r => await ProcessDeepStackResponseAsync(camera, r, fullPath))
+                .Left(async error => await Task.Run(() => _logger.LogWarning(error.Message)));
         }
         
         private async Task ProcessDeepStackResponseAsync(CameraConfig camera, DeepStackResponse response, string fullPath)
@@ -52,7 +52,7 @@ namespace BiAi.Services
         
         private static Seq<DeepStackObject> GetRelevantObjects(CameraConfig camera, DeepStackResponse response)
         {
-            return new Seq<DeepStackObject>(response.Predictions)
+            return response.Predictions.ToSeq()
                 .Filter(p => camera.RelevantObjects.Contains(p.Label)
                              && p.Confidence * 100 >= camera.LowerCertainty
                              && p.Confidence * 100 <= camera.UpperCertainty);

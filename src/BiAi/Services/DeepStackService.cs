@@ -4,29 +4,26 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using BiAi.Models;
 using LanguageExt;
+using LanguageExt.Common;
 using static LanguageExt.Prelude;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
 namespace BiAi.Services
 {
     public class DeepStackService : IDeepStackService
     {
-        private readonly ILogger<DeepStackService> _logger;
         private readonly HttpClient _httpClient;
 
         private readonly Uri _deepStackEndpoint;
 
-        public DeepStackService(ILogger<DeepStackService> logger, IConfiguration configuration, IHttpClientFactory clientFactory)
+        public DeepStackService(IConfiguration configuration, IHttpClientFactory clientFactory)
         {
-            _logger = logger;
             _httpClient = clientFactory.CreateClient();
-            
             _deepStackEndpoint = new Uri(configuration["DeepStackEndpoint"]);
         }
 
-        public async Task<Option<DeepStackResponse>> DetectAsync(string fullPath)
+        public async Task<Either<Error, DeepStackResponse>> DetectAsync(string fullPath)
         {
             // TODO: retry this w/backoff in case image is still being written
             try
@@ -39,14 +36,12 @@ namespace BiAi.Services
 
                 var response = await _httpClient.PostAsync(_deepStackEndpoint, request);
                 var jsonString = await response.Content.ReadAsStringAsync();
-                return Some(JsonConvert.DeserializeObject<DeepStackResponse>(jsonString));
+                return Right(JsonConvert.DeserializeObject<DeepStackResponse>(jsonString));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to process image at {imagePath}", fullPath);
+                return Error.New($"Failed to process image at {fullPath}", ex);
             }
-
-            return None;
         }
     }
 }

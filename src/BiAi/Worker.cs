@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using BiAi.Models;
 using BiAi.Services;
 using LanguageExt;
+using LanguageExt.Common;
+using static LanguageExt.Prelude;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -76,8 +78,8 @@ namespace BiAi
             try
             {
                 await GetCameraForFile(e.FullPath)
-                    .Some(async c => await _imageProcessor.ProcessImageAsync(c, e.FullPath))
-                    .None(async () => _logger.LogWarning("Could not match camera for image at {imagePath}", e.FullPath));
+                    .Right(async c => await _imageProcessor.ProcessImageAsync(c, e.FullPath))
+                    .Left(async m => await Task.Run(() => _logger.LogWarning(m.Message)));
             }
             finally
             {
@@ -85,12 +87,13 @@ namespace BiAi
             }
         }
 
-        private Option<CameraConfig> GetCameraForFile(string fullPath)
+        private Either<Error, CameraConfig> GetCameraForFile(string fullPath)
         {
             return Path.GetFileNameWithoutExtension(fullPath)
                 .Split('.')
                 .HeadOrNone()
-                .Bind(p => _cameras.Filter(c => c.Enabled && c.Name == p).HeadOrNone());
+                .Bind(p => _cameras.Filter(c => c.Enabled && c.Name == p).HeadOrNone())
+                .ToEither(Error.New($"Could not match camera for image at {fullPath}"));
         }
     }
 }
