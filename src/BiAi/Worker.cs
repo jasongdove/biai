@@ -7,7 +7,6 @@ using BiAi.Models;
 using BiAi.Services;
 using LanguageExt;
 using LanguageExt.Common;
-using static LanguageExt.Prelude;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -22,6 +21,8 @@ namespace BiAi
         private readonly IImageProcessor _imageProcessor;
         private readonly FileSystemWatcher _watcher;
         private readonly List<CameraConfig> _cameras;
+
+        private CancellationToken _cancellationToken;
 
         public Worker(ILogger<Worker> logger, IConfiguration configuration, IImageProcessor imageProcessor)
         {
@@ -47,6 +48,7 @@ namespace BiAi
         
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            _cancellationToken = stoppingToken;
             await Task.CompletedTask;
         }
 
@@ -70,16 +72,16 @@ namespace BiAi
 
         private async void OnCreatedAsync(object sender, FileSystemEventArgs e)
         {
-            await _semaphoreSlim.WaitAsync();
+            await _semaphoreSlim.WaitAsync(_cancellationToken);
             
             // this helps with files that are still being written
-            await Task.Delay(TimeSpan.FromMilliseconds(100));
+            await Task.Delay(TimeSpan.FromMilliseconds(100), _cancellationToken);
             
             try
             {
                 await GetCameraForFile(e.FullPath)
-                    .Right(async c => await _imageProcessor.ProcessImageAsync(c, e.FullPath))
-                    .Left(async m => await Task.Run(() => _logger.LogWarning(m.Message)));
+                    .Right(async c => await _imageProcessor.ProcessImageAsync(c, e.FullPath, _cancellationToken))
+                    .Left(async m => await Task.Run(() => _logger.LogWarning(m.Message), _cancellationToken));
             }
             finally
             {

@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using BiAi.Models;
 using LanguageExt;
@@ -19,20 +20,20 @@ namespace BiAi.Services
             _telegramService = telegramService;
         }
         
-        public async Task ProcessImageAsync(CameraConfig camera, string fullPath)
+        public async Task ProcessImageAsync(CameraConfig camera, string fullPath, CancellationToken cancellationToken)
         {
             _logger.LogDebug(
                 "Image at {imagePath} was created and matched to camera {camera}",
                 fullPath,
                 camera.Name);
                         
-            var response = await _deepStackService.DetectAsync(fullPath);
+            var response = await _deepStackService.DetectAsync(fullPath, cancellationToken);
             await response
-                .Right(async r => await ProcessDeepStackResponseAsync(camera, r, fullPath))
-                .Left(async error => await Task.Run(() => _logger.LogWarning(error.Message)));
+                .Right(async r => await ProcessDeepStackResponseAsync(camera, r, fullPath, cancellationToken))
+                .Left(async error => await Task.Run(() => _logger.LogWarning(error.Message), cancellationToken));
         }
         
-        private async Task ProcessDeepStackResponseAsync(CameraConfig camera, DeepStackResponse response, string fullPath)
+        private async Task ProcessDeepStackResponseAsync(CameraConfig camera, DeepStackResponse response, string fullPath, CancellationToken cancellationToken)
         {
             if (response.Success)
             {
@@ -41,7 +42,7 @@ namespace BiAi.Services
                 if (!relevantObjects.IsEmpty)
                 {
                     _logger.LogInformation("ALERT!");
-                    await _telegramService.SendAlarmAsync(camera, fullPath);
+                    await _telegramService.SendAlarmAsync(camera, fullPath, cancellationToken);
                 }
             }
             else

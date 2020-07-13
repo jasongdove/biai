@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using BiAi.Models;
 using LanguageExt;
@@ -23,7 +24,7 @@ namespace BiAi.Services
             _deepStackEndpoint = new Uri(configuration["DeepStackEndpoint"]);
         }
 
-        public async Task<Either<Error, DeepStackResponse>> DetectAsync(string fullPath)
+        public async Task<Either<Error, DeepStackResponse>> DetectAsync(string fullPath, CancellationToken cancellationToken)
         {
             // TODO: retry this w/backoff in case image is still being written
             try
@@ -34,7 +35,7 @@ namespace BiAi.Services
                 using var request = new MultipartFormDataContent();
                 request.Add(streamContent, "image", Path.GetFileName(fullPath));
 
-                var response = await _httpClient.PostAsync(_deepStackEndpoint, request);
+                var response = await _httpClient.PostAsync(_deepStackEndpoint, request, cancellationToken);
                 var jsonString = await response.Content.ReadAsStringAsync();
                 return Right(JsonConvert.DeserializeObject<DeepStackResponse>(jsonString));
             }
