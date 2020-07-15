@@ -1,11 +1,11 @@
 using System.Threading;
 using System.Threading.Tasks;
-using BiAi.Models;
+using BiAi.Models.Config;
 
 namespace BiAi.Services
 {
     public interface ITelegramService
     {
-        Task SendAlarmAsync(CameraConfig camera, string fullPath, CancellationToken cancellationToken);
+        Task ProcessTriggerAsync(TelegramTriggerConfig telegramTrigger, string fullPath, CancellationToken cancellationToken);
     }
 }

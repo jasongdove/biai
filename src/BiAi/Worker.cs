@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using BiAi.Models;
+using BiAi.Models.Config;
 using BiAi.Services;
 using LanguageExt;
 using LanguageExt.Common;
@@ -55,6 +55,7 @@ namespace BiAi
         public override Task StartAsync(CancellationToken cancellationToken)
         {
             _watcher.EnableRaisingEvents = true;
+            _logger.LogInformation("Watching {folder} for images matching {filter}", _watcher.Path, _watcher.Filter);
             return base.StartAsync(cancellationToken);
         }
 

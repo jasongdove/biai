@@ -15,6 +15,7 @@ namespace BiAi
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Debug()
                 .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
+                .MinimumLevel.Override("System.Net.Http.HttpClient", LogEventLevel.Warning)
                 .Enrich.FromLogContext()
                 .WriteTo.Console()
                 .CreateLogger();
@@ -41,9 +42,12 @@ namespace BiAi
                 .UseSerilog()
                 .ConfigureServices((hostContext, services) =>
                 {
+                    services.Configure<ConsoleLifetimeOptions>(options => options.SuppressStatusMessages = true);
+
                     services.AddHttpClient()
                         .AddSingleton<IDeepStackService, DeepStackService>()
                         .AddSingleton<ITelegramService, TelegramService>()
+                        .AddSingleton<ITriggerService, TriggerService>()
                         .AddSingleton<IImageProcessor, ImageProcessor>()
                         .AddHostedService<Worker>();
                 });

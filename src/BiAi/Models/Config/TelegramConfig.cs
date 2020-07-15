@@ -1,4 +1,4 @@
-namespace BiAi.Models
+namespace BiAi.Models.Config
 {
     public class TelegramConfig
     {
