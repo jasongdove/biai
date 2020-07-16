@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using BiAi.Models;
 using BiAi.Models.Config;
 using BiAi.Services;
 using LanguageExt;
@@ -80,8 +81,13 @@ namespace BiAi
             
             try
             {
-                await GetCameraForFile(e.FullPath)
-                    .Right(async c => await _imageProcessor.ProcessImageAsync(c, e.FullPath, _cancellationToken))
+                await Image.FromFullPath(e.FullPath)
+                    .Right(async image =>
+                    {
+                        await GetCameraForImage(image)
+                            .Right(async c => await _imageProcessor.ProcessImageAsync(c, image, _cancellationToken))
+                            .Left(async m => await Task.Run(() => _logger.LogWarning(m.Message), _cancellationToken));
+                    })
                     .Left(async m => await Task.Run(() => _logger.LogWarning(m.Message), _cancellationToken));
             }
             finally
@@ -90,13 +96,12 @@ namespace BiAi
             }
         }
 
-        private Either<Error, CameraConfig> GetCameraForFile(string fullPath)
+        private Either<Error, CameraConfig> GetCameraForImage(Image image)
         {
-            return Path.GetFileNameWithoutExtension(fullPath)
-                .Split('.')
+            return _cameras
+                .Filter(c => c.Enabled && c.Name == image.CameraName)
                 .HeadOrNone()
-                .Bind(p => _cameras.Filter(c => c.Enabled && c.Name == p).HeadOrNone())
-                .ToEither(Error.New($"Could not match camera for image at {fullPath}"));
+                .ToEither(Error.New($"Could not match camera for image at {image.FullPath}"));
         }
     }
 }

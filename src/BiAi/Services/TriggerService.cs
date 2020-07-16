@@ -3,6 +3,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using BiAi.Models;
 using BiAi.Models.Config;
 
 namespace BiAi.Services
@@ -16,19 +17,13 @@ namespace BiAi.Services
             _httpClient = clientFactory.CreateClient();
         }
 
-        public async Task ProcessTriggersAsync(CameraConfig camera, CancellationToken cancellationToken)
+        public async Task ProcessTriggersAsync(CameraConfig camera, Image image, CancellationToken cancellationToken)
         {
-            foreach (var trigger in camera.Triggers.Where(t => !IsTriggerInCooldown(t)))
+            foreach (var trigger in camera.Triggers.Where(t => !t.IsInCooldown(image)))
             {
                 await _httpClient.GetAsync(trigger.Url, cancellationToken);
-                trigger.LastTrigger = DateTime.Now;
+                trigger.NextTrigger = image.Timestamp + TimeSpan.FromSeconds(trigger.CooldownSeconds);
             }
-        }
-
-        private static bool IsTriggerInCooldown(TriggerConfig trigger)
-        {
-            var nextTrigger = trigger.LastTrigger + TimeSpan.FromSeconds(trigger.CooldownSeconds);
-            return DateTime.Now < nextTrigger;
         }
     }
 }

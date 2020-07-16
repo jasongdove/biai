@@ -24,23 +24,32 @@ namespace BiAi.Services
             _triggerService = triggerService;
         }
 
-        public async Task ProcessImageAsync(CameraConfig camera, string fullPath, CancellationToken cancellationToken)
+        public async Task ProcessImageAsync(CameraConfig camera, Image image, CancellationToken cancellationToken)
         {
             _logger.LogDebug(
                 "Image at {imagePath} was created and matched to camera {camera}",
-                fullPath,
+                image.FullPath,
                 camera.Name);
-            
-            // TODO: pull timestamp from image for more accurate cooldowns
 
-            var response = await _deepStackService.DetectAsync(fullPath, cancellationToken);
-            await response
-                .Right(async r => await ProcessDeepStackResponseAsync(camera, r, fullPath, cancellationToken))
-                .Left(async error => await Task.Run(() => _logger.LogWarning(error.Message), cancellationToken));
+            if (camera.TelegramTrigger.IsInCooldown(image) && camera.Triggers.All(t => t.IsInCooldown(image)))
+            {
+                _logger.LogDebug(
+                    "All triggers are in cooldown for camera {camera}, ignoring image at {imagePath}",
+                    camera.Name,
+                    image.FullPath
+                );
+            }
+            else
+            {
+                var response = await _deepStackService.DetectAsync(image.FullPath, cancellationToken);
+                await response
+                    .Right(async r => await ProcessDeepStackResponseAsync(camera, r, image, cancellationToken))
+                    .Left(async error => await Task.Run(() => _logger.LogWarning(error.Message), cancellationToken));
+            }
         }
 
         private async Task ProcessDeepStackResponseAsync(CameraConfig camera, DeepStackResponse response,
-            string fullPath, CancellationToken cancellationToken)
+            Image image, CancellationToken cancellationToken)
         {
             if (response.Success)
             {
@@ -53,10 +62,10 @@ namespace BiAi.Services
 
                     if (camera.TelegramTrigger != null)
                     {
-                        await _telegramService.ProcessTriggerAsync(camera.TelegramTrigger, fullPath, cancellationToken);
+                        await _telegramService.ProcessTriggerAsync(camera.TelegramTrigger, image, cancellationToken);
                     }
 
-                    await _triggerService.ProcessTriggersAsync(camera, cancellationToken);
+                    await _triggerService.ProcessTriggersAsync(camera, image, cancellationToken);
                 }
             }
             else

@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using BiAi.Models;
 using BiAi.Models.Config;
 using LanguageExt;
 using LanguageExt.Common;
@@ -23,14 +24,14 @@ namespace BiAi.Services
             _telegramConfig = configuration.GetSection("Telegram").Get<TelegramConfig>();
         }
 
-        public async Task ProcessTriggerAsync(TelegramTriggerConfig telegramTrigger, string fullPath,
+        public async Task ProcessTriggerAsync(TelegramTriggerConfig telegramTrigger, Image image,
             CancellationToken cancellationToken)
         {
-            if (!IsTriggerInCooldown(telegramTrigger))
+            if (!telegramTrigger.IsInCooldown(image))
             {
-                var result = await SendPhotoAsync(telegramTrigger, fullPath, cancellationToken);
+                var result = await SendPhotoAsync(telegramTrigger, image.FullPath, cancellationToken);
                 await result.IfSomeAsync(async _ => await SendTextAsync(telegramTrigger, cancellationToken));
-                telegramTrigger.LastTrigger = DateTime.Now;
+                telegramTrigger.NextTrigger = image.Timestamp + TimeSpan.FromSeconds(telegramTrigger.CooldownSeconds);
             }
         }
 
@@ -99,12 +100,6 @@ namespace BiAi.Services
                     _logger.LogWarning(ex, "Failed to send fallback text to telegram");
                 }
             }
-        }
-        
-        private static bool IsTriggerInCooldown(TelegramTriggerConfig trigger)
-        {
-            var nextTrigger = trigger.LastTrigger + TimeSpan.FromSeconds(trigger.CooldownSeconds);
-            return DateTime.Now < nextTrigger;
         }
     }
 }

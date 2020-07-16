@@ -1,4 +1,5 @@
 using System;
+using LanguageExt;
 
 namespace BiAi.Models.Config
 {
@@ -7,6 +8,13 @@ namespace BiAi.Models.Config
         public string Caption { get; set; }
         public int CooldownSeconds { get; set; }
         
-        public DateTime LastTrigger { get; set; }
+        public Option<DateTime> NextTrigger { get; set; }
+
+        public bool IsInCooldown(Image image)
+        {
+            return NextTrigger
+                .Some(next => image.Timestamp < next)
+                .None(false);
+        }
     }
 }
