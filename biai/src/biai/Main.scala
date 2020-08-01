@@ -17,8 +17,13 @@ object Main extends IOApp {
         println(failures)
         IO.pure(ExitCode.Error)
       case Right(config) =>
+        val logger: Logger = LoggerImpl
+
         val cameras = config.cameras
-        cameras.foreach(c => println(s"Camera ${c.name} relevant objects: ${c.relevantObjects.mkString(", ")}"))
+        cameras.foreach(c => logger.log(s"Camera ${c.name} relevant objects: ${c.relevantObjects.mkString(", ")}"))
+
+        val deepStackService: DeepStackService = new DeepStackServiceImpl(config)
+        val imageProcessor: ImageProcessor = new ImageProcessorImpl(deepStackService, logger)
 
         val watcher: FolderWatcher = FolderWatcherImpl
         watcher.watch(config.targetFolder, newFile => {
@@ -26,12 +31,12 @@ object Main extends IOApp {
             case Some(image) =>
               cameras.find(_.name == image.cameraName) match {
                 case Some(camera) =>
-                  println(image)
+                  imageProcessor.processImage(image, camera)
                 case None =>
-                  println(s"Could not match camera for image at $newFile")
+                  logger.log(s"Could not match camera for image at $newFile")
               }
             case None =>
-              println(s"Unexpected image file name $newFile")
+              logger.log(s"Unexpected image file name $newFile")
           }
         })
 
