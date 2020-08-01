@@ -17,11 +17,19 @@ object Main extends IOApp {
         println(failures)
         IO.pure(ExitCode.Error)
       case Right(config) =>
+        val cameras = config.cameras
+        cameras.foreach(c => println(s"Camera ${c.name} relevant objects: ${c.relevantObjects.mkString(", ")}"))
+
         val watcher: FolderWatcher = FolderWatcherImpl
         watcher.watch(config.targetFolder, newFile => {
           Image(newFile) match {
             case Some(image) =>
-              println(image)
+              cameras.find(_.name == image.cameraName) match {
+                case Some(camera) =>
+                  println(image)
+                case None =>
+                  println(s"Could not match camera for image at $newFile")
+              }
             case None =>
               println(s"Unexpected image file name $newFile")
           }

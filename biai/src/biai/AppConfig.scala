@@ -1,4 +1,5 @@
 package biai
 
-case class AppConfig(targetFolder: String)
+case class Camera(name: String, relevantObjects: List[String])
 
+case class AppConfig(targetFolder: String, cameras: List[Camera])
