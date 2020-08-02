@@ -8,7 +8,6 @@ trait Logger {
 
 object LoggerImpl extends Logger {
   override def log(message: String): IO[Unit] = {
-    println(message)
-    IO.unit
+    IO(println(message))
   }
 }

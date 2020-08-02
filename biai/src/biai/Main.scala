@@ -1,46 +1,30 @@
 package biai
 
-import cats.effect.{ExitCode, IO, IOApp}
+import cats.effect.{Blocker, ExitCode, IO, IOApp}
+import cats.implicits._
 import pureconfig._
-import pureconfig.generic.auto._
-
-import scala.concurrent.duration.DurationInt
+import pureconfig.module.catseffect.syntax._
 
 object Main extends IOApp {
   override def run(args: List[String]): IO[ExitCode] = {
     val configFolder =
       sys.env.getOrElse("BIAI_CONFIG_FOLDER", s"${System.getProperty("user.home")}/.config/biai")
 
-    val config = ConfigSource.file(s"$configFolder/biai.conf").load[AppConfig]
-    config match {
-      case Left(failures) =>
-        println(failures)
-        IO.pure(ExitCode.Error)
-      case Right(config) =>
-        val logger: Logger = LoggerImpl
+    val logger: Logger = LoggerImpl
 
-        val cameras = config.cameras
-        cameras.foreach(c => logger.log(s"Camera ${c.name} relevant objects: ${c.relevantObjects.mkString(", ")}"))
-
-        val deepStackService: DeepStackService = new DeepStackServiceImpl(config)
-        val imageProcessor: ImageProcessor = new ImageProcessorImpl(deepStackService, logger)
-
-        val watcher: FolderWatcher = FolderWatcherImpl
-        watcher.watch(config.targetFolder, newFile => {
-          Image(newFile) match {
-            case Some(image) =>
-              cameras.find(_.name == image.cameraName) match {
-                case Some(camera) =>
-                  imageProcessor.processImage(image, camera)
-                case None =>
-                  logger.log(s"Could not match camera for image at $newFile")
-              }
-            case None =>
-              logger.log(s"Unexpected image file name $newFile")
-          }
-        })
-
-        IO.sleep(30.seconds) *> IO.pure(ExitCode.Success)
-    }
+    Blocker[IO].use(blocker => {
+      for {
+        config <- ConfigSource.file(s"$configFolder/biai.conf").loadF[IO, AppConfig](blocker)
+        _ <- logCameras(config.cameras, logger)
+        deepStackService: DeepStackService = new DeepStackServiceImpl(config)
+        imageProcessor: ImageProcessor = new ImageProcessorImpl(deepStackService, logger)
+        folderWatcher: FolderWatcher = new FolderWatcherImpl(config, imageProcessor, logger)
+        _ <- IO(folderWatcher.start())
+        _ <- IO.never
+      } yield ExitCode.Success
+    })
   }
+
+  def logCameras(cameras: List[CameraConfig], logger: Logger): IO[Unit] =
+    cameras.map(c => logger.log(s"Camera ${c.name} relevant objects: ${c.relevantObjects.mkString(", ")}")).sequence_
 }
