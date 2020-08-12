@@ -8,7 +8,7 @@ import better.files.File
 case class Image(fileName: String, cameraName: String, timestamp: Instant)
 
 object Image {
-  def apply(fullPath: String): Option[Image] = {
+  def load(fullPath: String): Option[Image] = {
     val fileName = File(fullPath).name
     fileName match {
       case s"$cameraName.$timestamp.$_" =>

@@ -10,7 +10,9 @@ class ImageProcessorImpl(deepStackService: DeepStackService, logger: Logger) ext
   override def processImage(image: Image, camera: CameraConfig): IO[Unit] = {
     for {
       _ <- logger.log(s"Image at ${image.fileName} was created and matched to camera ${camera.name}")
-      _ <- deepStackService.detectObjects(image)
+      r <- deepStackService.detectObjects(image)
+      _ <- logger.log("Done detecting")
+      _ <- IO { println(r) }
     } yield ()
   }
 }
