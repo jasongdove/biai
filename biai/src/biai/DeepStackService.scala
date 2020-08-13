@@ -17,7 +17,7 @@ trait DeepStackService {
   def detectObjects(image: Image): IO[DeepStackResponse]
 }
 
-class DeepStackServiceImpl(config: AppConfig, blocker: Blocker, httpClient: Client[IO], logger: Logger)(implicit
+class DeepStackServiceImpl(config: AppConfig, blocker: Blocker, httpClient: Client[IO])(implicit
   cs: ContextShift[IO]
 ) extends DeepStackService
     with Http4sClientDsl[IO] {
@@ -26,15 +26,23 @@ class DeepStackServiceImpl(config: AppConfig, blocker: Blocker, httpClient: Clie
   implicit val responseDecoder: EntityDecoder[IO, DeepStackResponse] = jsonOf[IO, DeepStackResponse]
 
   override def detectObjects(image: Image): IO[DeepStackResponse] = {
-    val multipart: Multipart[IO] =
-      Multipart[IO](
-        Vector(Part.fileData[IO]("image", image.file.toJava, blocker, `Content-Type`(MediaType.image.png)))
-      )
-
     for {
+      multipart <- getMultipart(image)
       uri <- Uri.fromString(config.deepStackEndpoint).liftTo[IO]
       request <- Method.POST(multipart, uri).map(_.withHeaders(multipart.headers))
       response <- httpClient.expect[DeepStackResponse](request)
     } yield response
+  }
+
+  private def getMultipart(image: Image): IO[Multipart[IO]] = {
+    image.file
+      .`extension`(includeDot = false)
+      .flatMap(ext => MediaType.forExtension(ext))
+      .map(mediaType =>
+        Multipart[IO](
+          Vector(Part.fileData[IO]("image", image.file.toJava, blocker, `Content-Type`(mediaType)))
+        )
+      )
+      .liftTo[IO](new Exception("Unable to generate multipart form data"))
   }
 }

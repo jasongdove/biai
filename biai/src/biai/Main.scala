@@ -7,9 +7,6 @@ import pureconfig._
 import pureconfig.module.catseffect.syntax._
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import org.http4s.client.middleware.RequestLogger
-import org.http4s.client.middleware.RequestLogger
-import org.http4s.client.middleware.ResponseLogger
 
 object Main extends IOApp {
   override def run(args: List[String]): IO[ExitCode] = {
@@ -19,7 +16,7 @@ object Main extends IOApp {
         case (imageProcessor, queue, logger) => {
           queue.dequeue
             .evalMap {
-              case Left(throwable) => logger.log(throwable.getMessage())
+              case Left(throwable) => logger.log(throwable.getMessage)
               case Right(file)     => imageProcessor.processImage(file)
             }
             .compile
@@ -41,10 +38,10 @@ object Main extends IOApp {
       _ <- logCameras(config.cameras, logger).asResource
       queue <- fs2.concurrent.Queue.bounded[IO, FolderWatcher.Event](100).asResource
       httpClient <- BlazeClientBuilder[IO](global).resource
-      folderWatcher <- FolderWatcher.make(config, queue, blocker)
+      _ <- FolderWatcher.make(config, queue, blocker, logger)
     } yield {
       //val loggingClient = ResponseLogger(logHeaders = true, logBody = true)(RequestLogger(logHeaders = true, logBody = true)(httpClient))
-      val deepStackService: DeepStackService = new DeepStackServiceImpl(config, blocker, httpClient, logger)
+      val deepStackService: DeepStackService = new DeepStackServiceImpl(config, blocker, httpClient)
       val imageProcessor: ImageProcessor = new ImageProcessorImpl(config, deepStackService, logger)
       (imageProcessor, queue, logger)
     }
