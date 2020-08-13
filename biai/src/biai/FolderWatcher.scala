@@ -2,28 +2,31 @@ package biai
 
 import better.files.File
 import io.methvin.better.files.RecursiveFileMonitor
+import fs2.concurrent.Queue
+import cats.effect._
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import cats.effect.Resource
 
-trait FolderWatcher {
-  def start(): Unit
-}
+object FolderWatcher {
 
-class FolderWatcherImpl(config: AppConfig, imageProcessor: ImageProcessor, log: Logger) extends FolderWatcher {
-  override def start(): Unit = {
-    val watcher = new RecursiveFileMonitor(File(config.targetFolder)) {
-      override def onCreate(file: File, count: Int): Unit = {
-        val image = Image.load(file.name)
-        val camera = image.flatMap(i => config.cameras.find(_.name == i.cameraName))
-        val action = (image, camera) match {
-          case (Some(image), Some(camera)) => imageProcessor.processImage(image, camera)
-          case _                           => log.log(s"Could not match camera for image at ${file.name}")
-        }
+  type Event = Either[Throwable, File]
 
-        action.attempt.unsafeRunSync()
+  def make(config: AppConfig, queue: Queue[IO, Event], blocker: Blocker): Resource[IO, Unit] =
+    Resource
+      .make(
+        makeMonitor(config, queue)
+      )(monitor => IO(monitor.close()))
+      .evalMap(monitor => IO(monitor.start()(blocker.blockingContext)))
+
+  private def makeMonitor(config: AppConfig, queue: Queue[IO, Event]): IO[RecursiveFileMonitor] =
+    IO {
+      new RecursiveFileMonitor(File(config.targetFolder)) {
+        override def onCreate(file: File, count: Int): Unit =
+          queue.enqueue1(Right(file)).unsafeRunSync()
+
+        override def onException(exception: Throwable): Unit = queue.enqueue1(Left(exception)).unsafeRunSync()
       }
     }
 
-    watcher.start()
-  }
 }

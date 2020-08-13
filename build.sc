@@ -13,6 +13,8 @@ object biai extends ScalaModule {
         ivy"org.http4s::http4s-dsl:$http4sVersion",
         ivy"org.http4s::http4s-blaze-client:$http4sVersion",
         ivy"org.http4s::http4s-circe:$http4sVersion",
-        ivy"io.circe::circe-generic:0.12.3"
+        ivy"io.circe::circe-generic:0.12.3",
+        ivy"co.fs2::fs2-core:2.4.0",
+        //ivy"ch.qos.logback:logback-classic:1.2.3"
     )
 }
