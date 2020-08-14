@@ -43,6 +43,6 @@ class DeepStackServiceImpl(config: AppConfig, blocker: Blocker, httpClient: Clie
           Vector(Part.fileData[IO]("image", image.file.toJava, blocker, `Content-Type`(mediaType)))
         )
       )
-      .liftTo[IO](new Exception("Unable to generate multipart form data"))
+      .liftTo[IO](UnableToPostImage)
   }
 }

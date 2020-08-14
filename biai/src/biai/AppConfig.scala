@@ -3,7 +3,7 @@ package biai
 import pureconfig.ConfigReader
 import pureconfig.generic.semiauto.deriveReader
 
-case class CameraConfig(name: String, relevantObjects: List[String])
+case class CameraConfig(name: String, relevantObjects: List[String], enabled: Boolean, minConfidence: Int, maxConfidence: Int)
 
 object CameraConfig {
   implicit val configReader: ConfigReader[CameraConfig] = deriveReader[CameraConfig]

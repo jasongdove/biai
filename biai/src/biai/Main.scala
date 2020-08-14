@@ -6,8 +6,6 @@ import org.http4s.client.blaze.BlazeClientBuilder
 import pureconfig._
 import pureconfig.module.catseffect.syntax._
 
-import scala.concurrent.ExecutionContext.Implicits.global
-
 object Main extends IOApp {
   override def run(args: List[String]): IO[ExitCode] = {
 
@@ -17,7 +15,12 @@ object Main extends IOApp {
           queue.dequeue
             .evalMap {
               case Left(throwable) => logger.log(throwable.getMessage)
-              case Right(file)     => imageProcessor.processImage(file)
+              case Right(file) =>
+                imageProcessor
+                  .processImage(file)
+                  .recoverWith {
+                    case error: NonFatalError => logger.log(error.getMessage)
+                  }
             }
             .compile
             .drain
@@ -37,7 +40,7 @@ object Main extends IOApp {
       config <- ConfigSource.file(s"$configFolder/biai.conf").loadF[IO, AppConfig](blocker).asResource
       _ <- logCameras(config.cameras, logger).asResource
       queue <- fs2.concurrent.Queue.bounded[IO, FolderWatcher.Event](100).asResource
-      httpClient <- BlazeClientBuilder[IO](global).resource
+      httpClient <- BlazeClientBuilder[IO](blocker.blockingContext).resource
       _ <- FolderWatcher.make(config, queue, blocker, logger)
     } yield {
       //val loggingClient = ResponseLogger(logHeaders = true, logBody = true)(RequestLogger(logHeaders = true, logBody = true)(httpClient))
