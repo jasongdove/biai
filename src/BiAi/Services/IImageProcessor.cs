@@ -3,10 +3,9 @@ using System.Threading.Tasks;
 using BiAi.Models;
 using BiAi.Models.Config;
 
-namespace BiAi.Services
+namespace BiAi.Services;
+
+public interface IImageProcessor
 {
-    public interface IImageProcessor
-    {
-        Task ProcessImageAsync(CameraConfig camera, Image image, CancellationToken cancellationToken);
-    }
+    Task ProcessImageAsync(CameraConfig camera, Image image, CancellationToken cancellationToken);
 }
