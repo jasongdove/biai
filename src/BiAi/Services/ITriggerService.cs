@@ -3,10 +3,9 @@ using System.Threading.Tasks;
 using BiAi.Models;
 using BiAi.Models.Config;
 
-namespace BiAi.Services
+namespace BiAi.Services;
+
+public interface ITriggerService
 {
-    public interface ITriggerService
-    {
-        Task ProcessTriggersAsync(CameraConfig camera, Image image, CancellationToken cancellationToken);
-    }
+    Task ProcessTriggersAsync(CameraConfig camera, Image image, CancellationToken cancellationToken);
 }

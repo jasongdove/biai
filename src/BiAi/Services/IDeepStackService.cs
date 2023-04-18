@@ -4,10 +4,9 @@ using BiAi.Models;
 using LanguageExt;
 using LanguageExt.Common;
 
-namespace BiAi.Services
+namespace BiAi.Services;
+
+public interface IDeepStackService
 {
-    public interface IDeepStackService
-    {
-        Task<Either<Error, DeepStackResponse>> DetectAsync(string fullPath, CancellationToken cancellationToken);
-    }
+    Task<Either<Error, DeepStackResponse>> DetectAsync(string fullPath, CancellationToken cancellationToken);
 }

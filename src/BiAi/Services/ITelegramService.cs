@@ -3,10 +3,9 @@ using System.Threading.Tasks;
 using BiAi.Models;
 using BiAi.Models.Config;
 
-namespace BiAi.Services
+namespace BiAi.Services;
+
+public interface ITelegramService
 {
-    public interface ITelegramService
-    {
-        Task ProcessTriggerAsync(TelegramTriggerConfig telegramTrigger, Image image, CancellationToken cancellationToken);
-    }
+    Task ProcessTriggerAsync(TelegramTriggerConfig telegramTrigger, Image image, CancellationToken cancellationToken);
 }

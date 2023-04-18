@@ -1,13 +1,12 @@
 using Newtonsoft.Json;
 
-namespace BiAi.Models
+namespace BiAi.Models;
+
+public class DeepStackResponse
 {
-    public class DeepStackResponse
-    {
-        [JsonProperty("success")]
-        public bool Success { get; set; }
-        
-        [JsonProperty("predictions")]
-        public DeepStackObject[] Predictions { get; set; }
-    }
+    [JsonProperty("success")]
+    public bool Success { get; set; }
+
+    [JsonProperty("predictions")]
+    public DeepStackObject[] Predictions { get; set; }
 }
